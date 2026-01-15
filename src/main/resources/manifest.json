@@ -1,0 +1,19 @@
+{
+  "name": "doris-source-connector",
+  "version": "0.1.0-SNAPSHOT",
+  "title": "Doris Source Connector",
+  "description": "Kafka Connect Source Connector for Apache Doris incremental change feed.",
+  "owner": {
+    "name": "Apache Doris",
+    "type": "organization"
+  },
+  "component_types": [
+    "source"
+  ],
+  "tags": [
+    "doris",
+    "database",
+    "cdc"
+  ],
+  "confluent_hub_version": "0.1.0"
+}

@@ -13,16 +13,23 @@ import java.util.Map;
 
 public class DorisRecordConverter {
     private final DorisSourceConfig config;
+    private Schema cachedSchema;
 
     public DorisRecordConverter(DorisSourceConfig config) {
         this.config = config;
     }
 
     public SourceRecord convert(DorisRow row, Map<String, Object> partition) {
-        Schema valueSchema = createSchema(row.getData());
-        Struct value = new Struct(valueSchema);
+        if (cachedSchema == null) {
+            cachedSchema = createSchema(row.getData());
+        }
+
+        Struct value = new Struct(cachedSchema);
         for (Map.Entry<String, Object> entry : row.getData().entrySet()) {
-            value.put(entry.getKey(), entry.getValue());
+            // Only put fields that are in the schema (to handle potential structural changes)
+            if (cachedSchema.field(entry.getKey()) != null) {
+                value.put(entry.getKey(), entry.getValue());
+            }
         }
 
         DorisSourceOffset offset = new DorisSourceOffset(row.getSeq());
@@ -35,7 +42,7 @@ public class DorisRecordConverter {
                 null, // partition
                 null, // key schema
                 null, // key
-                valueSchema,
+                cachedSchema,
                 value
         );
     }

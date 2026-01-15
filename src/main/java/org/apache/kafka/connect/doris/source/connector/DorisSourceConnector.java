@@ -5,6 +5,7 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +27,10 @@ public class DorisSourceConnector extends SourceConnector {
     public List<Map<String, String>> taskConfigs(int maxTasks) {
         List<Map<String, String>> configs = new ArrayList<>(maxTasks);
         for (int i = 0; i < maxTasks; i++) {
-            configs.add(configProperties);
+            Map<String, String> taskConfig = new HashMap<>(configProperties);
+            taskConfig.put(DorisSourceConfig.TASK_ID, String.valueOf(i));
+            taskConfig.put(DorisSourceConfig.TASK_COUNT, String.valueOf(maxTasks));
+            configs.add(taskConfig);
         }
         return configs;
     }

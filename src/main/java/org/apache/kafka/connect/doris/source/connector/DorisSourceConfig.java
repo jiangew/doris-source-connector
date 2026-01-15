@@ -19,6 +19,10 @@ public class DorisSourceConfig extends AbstractConfig {
     public static final String DORIS_TABLE = "doris.table";
     public static final String SEQ_COLUMN = "seq.column";
     public static final String BATCH_SIZE = "batch.size";
+    public static final String POLL_INTERVAL_MS = "poll.interval.ms";
+
+    public static final String TASK_ID = "task.id";
+    public static final String TASK_COUNT = "task.count";
 
     public DorisSourceConfig(ConfigDef config, Map<String, ?> parsedConfig) {
         super(config, parsedConfig);
@@ -38,7 +42,11 @@ public class DorisSourceConfig extends AbstractConfig {
             .define(DORIS_TABLE, Type.STRING, ConfigDef.NO_DEFAULT_VALUE, new NonEmptyString(), Importance.HIGH, "Doris table", "Connection", 6, ConfigDef.Width.MEDIUM, "Doris Table")
             // Synchronization
             .define(SEQ_COLUMN, Type.STRING, "seq", new NonEmptyString(), Importance.MEDIUM, "Sequence column for incremental fetch", "Synchronization", 1, ConfigDef.Width.MEDIUM, "Sequence Column")
-            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 2, ConfigDef.Width.SHORT, "Batch Size");
+            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 2, ConfigDef.Width.SHORT, "Batch Size")
+            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 3, ConfigDef.Width.SHORT, "Poll Interval")
+            // Internal
+            .define(TASK_ID, Type.INT, 0, Importance.LOW, "Internal Task ID")
+            .define(TASK_COUNT, Type.INT, 1, Importance.LOW, "Internal Task Count");
 
     public String getDorisHost() { return getString(DORIS_HOST); }
     public int getDorisPort() { return getInt(DORIS_PORT); }
@@ -48,4 +56,7 @@ public class DorisSourceConfig extends AbstractConfig {
     public String getDorisTable() { return getString(DORIS_TABLE); }
     public String getSeqColumn() { return getString(SEQ_COLUMN); }
     public int getBatchSize() { return getInt(BATCH_SIZE); }
+    public long getPollIntervalMs() { return getLong(POLL_INTERVAL_MS); }
+    public int getTaskId() { return getInt(TASK_ID); }
+    public int getTaskCount() { return getInt(TASK_COUNT); }
 }

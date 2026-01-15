@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +35,7 @@ public class DorisSourceTask extends SourceTask {
     public void start(Map<String, String> props) {
         this.config = new DorisSourceConfig(props);
         this.dorisClient = new DorisClient(config);
+        log.info("Starting task {}/{} for table {}", config.getTaskId(), config.getTaskCount(), config.getDorisTable());
         try {
             this.dorisClient.connect();
         } catch (SQLException e) {
@@ -42,10 +44,15 @@ public class DorisSourceTask extends SourceTask {
         this.fetcher = new DorisIncrementalFetcher(config, dorisClient);
         this.converter = new DorisRecordConverter(config);
 
-        this.partition = Collections.singletonMap("table", config.getDorisTable());
+        // Include task info in partition to ensure each task has its own offset stream
+        this.partition = new HashMap<>();
+        partition.put("table", config.getDorisTable());
+        partition.put("task_id", String.valueOf(config.getTaskId()));
+        partition.put("task_count", String.valueOf(config.getTaskCount()));
 
         Map<String, Object> lastOffset = context.offsetStorageReader().offset(partition);
         this.currentOffset = DorisSourceOffset.fromMap(lastOffset);
+        log.info("Task {} initialized with offset {}", config.getTaskId(), currentOffset.getLastSeq());
     }
 
     @Override
@@ -53,10 +60,12 @@ public class DorisSourceTask extends SourceTask {
         try {
             List<DorisRow> rows = fetcher.fetch(currentOffset.getLastSeq());
             if (rows.isEmpty()) {
-                Thread.sleep(5000); // Wait for new data
+                log.debug("No new records for task {}, sleeping for {}ms", config.getTaskId(), config.getPollIntervalMs());
+                Thread.sleep(config.getPollIntervalMs());
                 return null;
             }
 
+            log.info("Task {} fetched {} records", config.getTaskId(), rows.size());
             List<SourceRecord> records = new ArrayList<>(rows.size());
             for (DorisRow row : rows) {
                 records.add(converter.convert(row, partition));
@@ -64,7 +73,7 @@ public class DorisSourceTask extends SourceTask {
             }
             return records;
         } catch (SQLException e) {
-            log.error("Failed to fetch records from Doris", e);
+            log.error("Failed to fetch records from Doris in task " + config.getTaskId(), e);
             throw new RuntimeException(e);
         }
     }

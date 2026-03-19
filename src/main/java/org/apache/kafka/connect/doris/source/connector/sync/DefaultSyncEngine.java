@@ -4,7 +4,7 @@ import org.apache.kafka.connect.doris.source.connector.DorisSourceConfig;
 import org.apache.kafka.connect.doris.source.connector.DorisSourceOffset;
 import org.apache.kafka.connect.doris.source.connector.converter.DorisRecordConverter;
 import org.apache.kafka.connect.doris.source.connector.fetcher.DorisIncrementalFetcher;
-import org.apache.kafka.connect.doris.source.connector.model.DorisRow;
+import org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,7 @@ public class DefaultSyncEngine implements SyncEngine {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         try {
-            List<DorisRow> rows = fetcher.fetch(currentOffset.getLastSeq());
+            List<DorisRowWithTypes> rows = fetcher.fetchWithTypes(currentOffset.getLastSeq());
             if (rows.isEmpty()) {
                 log.debug("No new records for task {}, sleeping for {}ms", config.getTaskId(), config.getPollIntervalMs());
                 Thread.sleep(config.getPollIntervalMs());
@@ -52,7 +52,7 @@ public class DefaultSyncEngine implements SyncEngine {
 
             log.info("Task {} fetched {} records", config.getTaskId(), rows.size());
             List<SourceRecord> records = new ArrayList<>(rows.size());
-            for (DorisRow row : rows) {
+            for (DorisRowWithTypes row : rows) {
                 records.add(converter.convert(row, partition));
                 currentOffset = new DorisSourceOffset(row.getSeq());
             }

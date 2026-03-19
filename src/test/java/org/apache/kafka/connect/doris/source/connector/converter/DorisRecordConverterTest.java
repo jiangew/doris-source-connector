@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Decimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -104,6 +105,30 @@ public class DorisRecordConverterTest {
 
         assertEquals(Schema.Type.INT64, idSchema1.type());
         assertEquals(Schema.Type.STRING, idSchema2.type());
+    }
+
+    @Test
+    public void usesJdbcTypesWhenProvided() {
+        DorisRecordConverter converter = new DorisRecordConverter(baseConfig());
+
+        Map<String, Object> rowData = new HashMap<>();
+        rowData.put("id", 1L);
+        rowData.put("amount", new java.math.BigDecimal("12.34"));
+        rowData.put("seq", 1L);
+
+        Map<String, Integer> sqlTypes = new HashMap<>();
+        sqlTypes.put("id", java.sql.Types.BIGINT);
+        sqlTypes.put("amount", java.sql.Types.DECIMAL);
+        sqlTypes.put("seq", java.sql.Types.BIGINT);
+
+        org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes row =
+                new org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes(1L, rowData, sqlTypes);
+
+        SourceRecord record = converter.convert(row, Collections.singletonMap("table", "tbl"));
+
+        Schema amountSchema = record.valueSchema().field("amount").schema();
+        assertEquals(Schema.Type.BYTES, amountSchema.type());
+        assertEquals(Decimal.LOGICAL_NAME, amountSchema.name());
     }
 
     private DorisSourceConfig baseConfig() {

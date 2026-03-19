@@ -5,7 +5,7 @@ import org.apache.kafka.connect.doris.source.connector.DorisSourceOffset;
 import org.apache.kafka.connect.doris.source.connector.client.DorisReader;
 import org.apache.kafka.connect.doris.source.connector.converter.DorisRecordConverter;
 import org.apache.kafka.connect.doris.source.connector.fetcher.DorisIncrementalFetcher;
-import org.apache.kafka.connect.doris.source.connector.model.DorisRow;
+import org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,17 @@ public class DefaultSyncEngineTest {
     @Test
     public void returnsNullAndPreservesOffsetWhenNoRows() throws InterruptedException {
         DorisSourceConfig config = configWithPollInterval(100);
-        DorisReader reader = (sql, seqColumn) -> Collections.emptyList();
+        DorisReader reader = new DorisReader() {
+            @Override
+            public List<org.apache.kafka.connect.doris.source.connector.model.DorisRow> fetchRecords(String sql, String seqColumn) {
+                return Collections.emptyList();
+            }
+
+            @Override
+            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) {
+                return Collections.emptyList();
+            }
+        };
         DorisIncrementalFetcher fetcher = new DorisIncrementalFetcher(config, reader);
         DorisRecordConverter converter = new DorisRecordConverter(config);
         DorisSourceOffset initialOffset = new DorisSourceOffset(-1L);
@@ -55,10 +65,20 @@ public class DefaultSyncEngineTest {
     @Test
     public void updatesOffsetAndReturnsRecords() throws InterruptedException {
         DorisSourceConfig config = configWithPollInterval(100);
-        DorisReader reader = (sql, seqColumn) -> Arrays.asList(
-                new DorisRow(100L, rowData(100L)),
-                new DorisRow(200L, rowData(200L))
-        );
+        DorisReader reader = new DorisReader() {
+            @Override
+            public List<org.apache.kafka.connect.doris.source.connector.model.DorisRow> fetchRecords(String sql, String seqColumn) {
+                return Collections.emptyList();
+            }
+
+            @Override
+            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) {
+                return Arrays.asList(
+                        new DorisRowWithTypes(100L, rowData(100L), sqlTypes()),
+                        new DorisRowWithTypes(200L, rowData(200L), sqlTypes())
+                );
+            }
+        };
         DorisIncrementalFetcher fetcher = new DorisIncrementalFetcher(config, reader);
         DorisRecordConverter converter = new DorisRecordConverter(config);
         DorisSourceOffset initialOffset = new DorisSourceOffset(50L);
@@ -82,8 +102,16 @@ public class DefaultSyncEngineTest {
     @Test
     public void wrapsSQLExceptionFromReader() {
         DorisSourceConfig config = configWithPollInterval(100);
-        DorisReader reader = (sql, seqColumn) -> {
-            throw new SQLException("boom");
+        DorisReader reader = new DorisReader() {
+            @Override
+            public List<org.apache.kafka.connect.doris.source.connector.model.DorisRow> fetchRecords(String sql, String seqColumn) throws SQLException {
+                throw new SQLException("boom");
+            }
+
+            @Override
+            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) throws SQLException {
+                throw new SQLException("boom");
+            }
         };
         DorisIncrementalFetcher fetcher = new DorisIncrementalFetcher(config, reader);
         DorisRecordConverter converter = new DorisRecordConverter(config);
@@ -119,5 +147,13 @@ public class DefaultSyncEngineTest {
         row.put("name", "test");
         row.put("seq", seq);
         return row;
+    }
+
+    private static Map<String, Integer> sqlTypes() {
+        Map<String, Integer> types = new HashMap<>();
+        types.put("id", java.sql.Types.BIGINT);
+        types.put("name", java.sql.Types.VARCHAR);
+        types.put("seq", java.sql.Types.BIGINT);
+        return types;
     }
 }

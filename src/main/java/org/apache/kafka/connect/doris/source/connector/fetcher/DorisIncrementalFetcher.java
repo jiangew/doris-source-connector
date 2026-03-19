@@ -3,6 +3,7 @@ package org.apache.kafka.connect.doris.source.connector.fetcher;
 import org.apache.kafka.connect.doris.source.connector.DorisSourceConfig;
 import org.apache.kafka.connect.doris.source.connector.client.DorisReader;
 import org.apache.kafka.connect.doris.source.connector.model.DorisRow;
+import org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -21,5 +22,10 @@ public class DorisIncrementalFetcher {
     public List<DorisRow> fetch(long lastSeq) throws SQLException {
         String sql = queryBuilder.build(lastSeq);
         return dorisClient.fetchRecords(sql, config.getSeqColumn());
+    }
+
+    public List<DorisRowWithTypes> fetchWithTypes(long lastSeq) throws SQLException {
+        String sql = queryBuilder.build(lastSeq);
+        return dorisClient.fetchRecordsWithTypes(sql);
     }
 }

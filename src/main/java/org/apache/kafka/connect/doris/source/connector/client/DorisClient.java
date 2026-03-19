@@ -2,6 +2,7 @@ package org.apache.kafka.connect.doris.source.connector.client;
 
 import org.apache.kafka.connect.doris.source.connector.DorisSourceConfig;
 import org.apache.kafka.connect.doris.source.connector.model.DorisRow;
+import org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,34 @@ public class DorisClient implements DorisReader {
                     }
                 }
                 rows.add(new DorisRow(seq, data));
+            }
+        }
+        return rows;
+    }
+
+    @Override
+    public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) throws SQLException {
+        List<DorisRowWithTypes> rows = new ArrayList<>();
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            while (rs.next()) {
+                Map<String, Object> data = new HashMap<>();
+                Map<String, Integer> sqlTypes = new HashMap<>();
+                long seq = -1;
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnLabel(i);
+                    Object value = rs.getObject(i);
+                    data.put(columnName, value);
+                    sqlTypes.put(columnName, metaData.getColumnType(i));
+                }
+                Object seqValue = data.get("seq");
+                if (seqValue instanceof Number) {
+                    seq = ((Number) seqValue).longValue();
+                }
+                rows.add(new DorisRowWithTypes(seq, data, sqlTypes));
             }
         }
         return rows;

@@ -65,7 +65,7 @@ public class DorisClient implements DorisReader {
     }
 
     @Override
-    public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) throws SQLException {
+    public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql, String seqColumn) throws SQLException {
         List<DorisRowWithTypes> rows = new ArrayList<>();
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -82,7 +82,7 @@ public class DorisClient implements DorisReader {
                     data.put(columnName, value);
                     sqlTypes.put(columnName, metaData.getColumnType(i));
                 }
-                Object seqValue = data.get("seq");
+                Object seqValue = data.get(seqColumn);
                 if (seqValue instanceof Number) {
                     seq = ((Number) seqValue).longValue();
                 }

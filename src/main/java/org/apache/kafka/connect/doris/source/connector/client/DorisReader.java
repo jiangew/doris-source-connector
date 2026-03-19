@@ -8,7 +8,7 @@ import java.util.List;
 public interface DorisReader {
     List<DorisRow> fetchRecords(String sql, String seqColumn) throws SQLException;
 
-    default List<org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes> fetchRecordsWithTypes(String sql) throws SQLException {
+    default List<org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes> fetchRecordsWithTypes(String sql, String seqColumn) throws SQLException {
         throw new UnsupportedOperationException("fetchRecordsWithTypes not supported");
     }
 }

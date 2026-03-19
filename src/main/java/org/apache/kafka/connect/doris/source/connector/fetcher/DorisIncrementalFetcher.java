@@ -26,6 +26,6 @@ public class DorisIncrementalFetcher {
 
     public List<DorisRowWithTypes> fetchWithTypes(long lastSeq) throws SQLException {
         String sql = queryBuilder.build(lastSeq);
-        return dorisClient.fetchRecordsWithTypes(sql);
+        return dorisClient.fetchRecordsWithTypes(sql, config.getSeqColumn());
     }
 }

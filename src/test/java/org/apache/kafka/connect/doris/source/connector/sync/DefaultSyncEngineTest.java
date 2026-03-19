@@ -34,7 +34,7 @@ public class DefaultSyncEngineTest {
             }
 
             @Override
-            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) {
+            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql, String seqColumn) {
                 return Collections.emptyList();
             }
         };
@@ -72,7 +72,7 @@ public class DefaultSyncEngineTest {
             }
 
             @Override
-            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) {
+            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql, String seqColumn) {
                 return Arrays.asList(
                         new DorisRowWithTypes(100L, rowData(100L), sqlTypes()),
                         new DorisRowWithTypes(200L, rowData(200L), sqlTypes())
@@ -109,7 +109,7 @@ public class DefaultSyncEngineTest {
             }
 
             @Override
-            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql) throws SQLException {
+            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql, String seqColumn) throws SQLException {
                 throw new SQLException("boom");
             }
         };

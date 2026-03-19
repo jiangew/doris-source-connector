@@ -21,6 +21,12 @@ public class SchemaCompatibilityStrategy {
         }
 
         // Widening rules
+        if (isDate(existing) && isTimestamp(incoming)) {
+            return SchemaBuilder.int64().name(org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME).optional().build();
+        }
+        if (isTimestamp(existing) && isDate(incoming)) {
+            return SchemaBuilder.int64().name(org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME).optional().build();
+        }
         if (isInt32(existing) && isInt64(incoming)) {
             return SchemaBuilder.int64().optional().build();
         }
@@ -32,6 +38,9 @@ public class SchemaCompatibilityStrategy {
         }
         if (isFloat32(existing) && isFloat64(incoming)) {
             return SchemaBuilder.float64().optional().build();
+        }
+        if (isString(existing) || isString(incoming)) {
+            return SchemaBuilder.string().optional().build();
         }
 
         // Fallback: incoming wins (schema evolution)
@@ -56,5 +65,17 @@ public class SchemaCompatibilityStrategy {
 
     private boolean isDecimal(Schema schema) {
         return Decimal.LOGICAL_NAME.equals(schema.name());
+    }
+
+    private boolean isDate(Schema schema) {
+        return org.apache.kafka.connect.data.Date.LOGICAL_NAME.equals(schema.name());
+    }
+
+    private boolean isTimestamp(Schema schema) {
+        return org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME.equals(schema.name());
+    }
+
+    private boolean isString(Schema schema) {
+        return schema.type() == Schema.Type.STRING;
     }
 }

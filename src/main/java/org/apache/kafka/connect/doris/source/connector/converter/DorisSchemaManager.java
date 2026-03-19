@@ -9,20 +9,35 @@ import java.util.Map;
 
 public class DorisSchemaManager {
     private Schema cachedSchema;
+    private final Map<String, Schema> schemaCache;
     private final JdbcTypeMapper jdbcTypeMapper;
     private final SchemaCompatibilityStrategy compatibilityStrategy;
 
     public Schema schemaFor(Map<String, Object> data) {
+        String signature = signatureFor(data, null);
+        Schema cached = schemaCache.get(signature);
+        if (cached != null) {
+            cachedSchema = cached;
+            return cached;
+        }
         if (cachedSchema == null || !isCompatible(cachedSchema, data)) {
             cachedSchema = buildSchema(data, cachedSchema);
         }
+        schemaCache.put(signature, cachedSchema);
         return cachedSchema;
     }
 
     public Schema schemaFor(Map<String, Object> data, Map<String, Integer> sqlTypes) {
+        String signature = signatureFor(data, sqlTypes);
+        Schema cached = schemaCache.get(signature);
+        if (cached != null) {
+            cachedSchema = cached;
+            return cached;
+        }
         if (cachedSchema == null || !isCompatible(cachedSchema, data, sqlTypes)) {
             cachedSchema = buildSchema(data, existingSchemaOrNull(), sqlTypes);
         }
+        schemaCache.put(signature, cachedSchema);
         return cachedSchema;
     }
 
@@ -33,6 +48,7 @@ public class DorisSchemaManager {
     public DorisSchemaManager(JdbcTypeMapper jdbcTypeMapper, SchemaCompatibilityStrategy compatibilityStrategy) {
         this.jdbcTypeMapper = jdbcTypeMapper;
         this.compatibilityStrategy = compatibilityStrategy;
+        this.schemaCache = new java.util.HashMap<>();
     }
 
     private boolean isCompatible(Schema schema, Map<String, Object> data) {
@@ -133,5 +149,19 @@ public class DorisSchemaManager {
 
     private Schema existingSchemaOrNull() {
         return cachedSchema;
+    }
+
+    private String signatureFor(Map<String, Object> data, Map<String, Integer> sqlTypes) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        for (String key : new java.util.TreeSet<>(data.keySet())) {
+            Schema schema;
+            if (sqlTypes != null && sqlTypes.containsKey(key)) {
+                schema = jdbcTypeMapper.schemaFor(sqlTypes.get(key), data.get(key));
+            } else {
+                schema = inferSchema(data.get(key));
+            }
+            parts.add(key + ":" + schema.type() + ":" + (schema.name() == null ? "" : schema.name()));
+        }
+        return String.join("|", parts);
     }
 }

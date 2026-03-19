@@ -30,8 +30,11 @@ public class DorisSourceConfigTest {
         assertEquals("fail", config.getKeyMissingStrategy());
         assertEquals("${database}.${table}", config.getTopicTemplate());
         assertEquals("fail", config.getTopicInvalidStrategy());
+        assertEquals("mod", config.getPartitionStrategy());
         assertEquals("update_time", config.getUpdateTimeColumn());
         assertEquals(0L, config.getSafetyDelayMs());
         assertEquals(1000, config.getBatchSize());
+        assertEquals(3, config.getRetryMaxAttempts());
+        assertEquals(1000L, config.getRetryBackoffMs());
     }
 }

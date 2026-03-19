@@ -39,4 +39,24 @@ public class SchemaCompatibilityStrategyTest {
         assertEquals(Decimal.LOGICAL_NAME, resolved.name());
         assertEquals("4", resolved.parameters().get(Decimal.SCALE_FIELD));
     }
+
+    @Test
+    public void widensDateToTimestamp() {
+        SchemaCompatibilityStrategy strategy = new SchemaCompatibilityStrategy();
+        Schema resolved = strategy.compatibleSchema(
+                org.apache.kafka.connect.data.Date.builder().optional().build(),
+                org.apache.kafka.connect.data.Timestamp.builder().optional().build()
+        );
+        assertEquals(org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME, resolved.name());
+    }
+
+    @Test
+    public void usesStringAsCatchAll() {
+        SchemaCompatibilityStrategy strategy = new SchemaCompatibilityStrategy();
+        Schema resolved = strategy.compatibleSchema(
+                SchemaBuilder.string().optional().build(),
+                SchemaBuilder.int64().optional().build()
+        );
+        assertEquals(Schema.Type.STRING, resolved.type());
+    }
 }

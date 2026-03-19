@@ -5,6 +5,8 @@ import org.apache.kafka.connect.doris.source.connector.client.DorisReader;
 import org.apache.kafka.connect.doris.source.connector.converter.DorisRecordConverter;
 import org.apache.kafka.connect.doris.source.connector.fetcher.DorisIncrementalFetcher;
 import org.apache.kafka.connect.doris.source.connector.sync.DefaultSyncEngine;
+import org.apache.kafka.connect.doris.source.connector.sync.FixedBackoffRetryPolicy;
+import org.apache.kafka.connect.doris.source.connector.sync.RetryPolicy;
 import org.apache.kafka.connect.doris.source.connector.sync.SyncEngine;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -52,13 +54,18 @@ public class DorisSourceTask extends SourceTask {
         Map<String, Object> lastOffset = context.offsetStorageReader().offset(partition);
         DorisSourceOffset initialOffset = DorisSourceOffset.fromMap(lastOffset);
         log.info("Task {} initialized with offset {}", config.getTaskId(), initialOffset.getLastSeq());
+        RetryPolicy retryPolicy = new FixedBackoffRetryPolicy(
+                config.getRetryMaxAttempts(),
+                config.getRetryBackoffMs()
+        );
         this.syncEngine = new DefaultSyncEngine(
                 config,
                 fetcher,
                 converter,
                 initialOffset,
                 partition,
-                dorisClientProvider::close
+                dorisClientProvider::close,
+                retryPolicy
         );
     }
 

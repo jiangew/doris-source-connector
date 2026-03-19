@@ -8,6 +8,7 @@ import org.apache.kafka.connect.doris.source.connector.fetcher.DorisIncrementalF
 import org.apache.kafka.connect.doris.source.connector.model.DorisRowWithTypes;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
+import org.apache.kafka.connect.doris.source.connector.sync.FixedBackoffRetryPolicy;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -16,8 +17,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,7 +53,8 @@ public class DefaultSyncEngineTest {
                 converter,
                 initialOffset,
                 partition,
-                () -> closed.set(true)
+                () -> closed.set(true),
+                new FixedBackoffRetryPolicy(0, 0)
         );
 
         List<SourceRecord> records = engine.poll();
@@ -90,7 +94,8 @@ public class DefaultSyncEngineTest {
                 converter,
                 initialOffset,
                 partition,
-                null
+                null,
+                new FixedBackoffRetryPolicy(0, 0)
         );
 
         List<SourceRecord> records = engine.poll();
@@ -124,10 +129,48 @@ public class DefaultSyncEngineTest {
                 converter,
                 initialOffset,
                 partition,
-                null
+                null,
+                new FixedBackoffRetryPolicy(0, 0)
         );
 
         assertThrows(RuntimeException.class, engine::poll);
+    }
+
+    @Test
+    public void retriesBeforeFailing() throws InterruptedException {
+        DorisSourceConfig config = configWithPollInterval(100);
+        AtomicInteger attempts = new AtomicInteger();
+        DorisReader reader = new DorisReader() {
+            @Override
+            public List<org.apache.kafka.connect.doris.source.connector.model.DorisRow> fetchRecords(String sql, String seqColumn) throws SQLException {
+                throw new SQLException("boom");
+            }
+
+            @Override
+            public List<DorisRowWithTypes> fetchRecordsWithTypes(String sql, String seqColumn) throws SQLException {
+                if (attempts.incrementAndGet() < 3) {
+                    throw new SQLException("boom");
+                }
+                return Collections.singletonList(new DorisRowWithTypes(1L, rowData(1L), sqlTypes()));
+            }
+        };
+        DorisIncrementalFetcher fetcher = new DorisIncrementalFetcher(config, reader);
+        DorisRecordConverter converter = new DorisRecordConverter(config);
+        DorisSourceOffset initialOffset = new DorisSourceOffset(0L);
+        Map<String, Object> partition = Collections.singletonMap("table", "tbl");
+
+        DefaultSyncEngine engine = new DefaultSyncEngine(
+                config,
+                fetcher,
+                converter,
+                initialOffset,
+                partition,
+                null,
+                new FixedBackoffRetryPolicy(3, 0)
+        );
+
+        List<SourceRecord> records = assertDoesNotThrow(engine::poll);
+        assertEquals(1, records.size());
     }
 
     private static DorisSourceConfig configWithPollInterval(long pollIntervalMs) {

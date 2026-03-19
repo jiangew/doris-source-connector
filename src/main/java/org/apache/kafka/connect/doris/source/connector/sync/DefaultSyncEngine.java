@@ -22,6 +22,7 @@ public class DefaultSyncEngine implements SyncEngine {
     private final DorisRecordConverter converter;
     private final Map<String, Object> partition;
     private final Runnable onClose;
+    private final RetryPolicy retryPolicy;
     private DorisSourceOffset currentOffset;
 
     public DefaultSyncEngine(
@@ -30,7 +31,8 @@ public class DefaultSyncEngine implements SyncEngine {
             DorisRecordConverter converter,
             DorisSourceOffset initialOffset,
             Map<String, Object> partition,
-            Runnable onClose
+            Runnable onClose,
+            RetryPolicy retryPolicy
     ) {
         this.config = config;
         this.fetcher = fetcher;
@@ -38,29 +40,25 @@ public class DefaultSyncEngine implements SyncEngine {
         this.currentOffset = initialOffset;
         this.partition = partition;
         this.onClose = onClose;
+        this.retryPolicy = retryPolicy;
     }
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        try {
-            List<DorisRowWithTypes> rows = fetcher.fetchWithTypes(currentOffset.getLastSeq());
-            if (rows.isEmpty()) {
-                log.debug("No new records for task {}, sleeping for {}ms", config.getTaskId(), config.getPollIntervalMs());
-                Thread.sleep(config.getPollIntervalMs());
-                return null;
-            }
-
-            log.info("Task {} fetched {} records", config.getTaskId(), rows.size());
-            List<SourceRecord> records = new ArrayList<>(rows.size());
-            for (DorisRowWithTypes row : rows) {
-                records.add(converter.convert(row, partition));
-                currentOffset = new DorisSourceOffset(row.getSeq());
-            }
-            return records;
-        } catch (SQLException e) {
-            log.error("Failed to fetch records from Doris in task " + config.getTaskId(), e);
-            throw new RuntimeException(e);
+        List<DorisRowWithTypes> rows = retryPolicy.execute(() -> fetcher.fetchWithTypes(currentOffset.getLastSeq()));
+        if (rows.isEmpty()) {
+            log.debug("No new records for task {}, sleeping for {}ms", config.getTaskId(), config.getPollIntervalMs());
+            Thread.sleep(config.getPollIntervalMs());
+            return null;
         }
+
+        log.info("Task {} fetched {} records", config.getTaskId(), rows.size());
+        List<SourceRecord> records = new ArrayList<>(rows.size());
+        for (DorisRowWithTypes row : rows) {
+            records.add(converter.convert(row, partition));
+            currentOffset = new DorisSourceOffset(row.getSeq());
+        }
+        return records;
     }
 
     @Override

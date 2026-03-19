@@ -2,6 +2,7 @@ package org.apache.kafka.connect.doris.source.connector;
 
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Range;
@@ -23,6 +24,9 @@ public class DorisSourceConfig extends AbstractConfig {
     public static final String KEY_MISSING_STRATEGY = "key.missing.strategy";
     public static final String TOPIC_TEMPLATE = "topic.template";
     public static final String TOPIC_INVALID_STRATEGY = "topic.invalid.strategy";
+    public static final String PARTITION_STRATEGY = "partition.strategy";
+    public static final String RETRY_MAX_ATTEMPTS = "retry.max.attempts";
+    public static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
     public static final String UPDATE_TIME_COLUMN = "update.time.column";
     public static final String SAFETY_DELAY_MS = "safety.delay.ms";
     public static final String BATCH_SIZE = "batch.size";
@@ -51,13 +55,16 @@ public class DorisSourceConfig extends AbstractConfig {
             .define(SEQ_COLUMN, Type.STRING, "seq", new NonEmptyString(), Importance.MEDIUM, "Sequence column for incremental fetch", "Synchronization", 1, ConfigDef.Width.MEDIUM, "Sequence Column")
             .define(PARTITION_COLUMN, Type.STRING, "id", new NonEmptyString(), Importance.MEDIUM, "Partition column for task sharding", "Synchronization", 2, ConfigDef.Width.MEDIUM, "Partition Column")
             .define(KEY_COLUMNS, Type.LIST, "", Importance.MEDIUM, "Key columns (comma-separated) for SourceRecord key", "Synchronization", 3, ConfigDef.Width.MEDIUM, "Key Columns")
-            .define(KEY_MISSING_STRATEGY, Type.STRING, "fail", new NonEmptyString(), Importance.MEDIUM, "Behavior when key columns are missing: fail|null", "Synchronization", 4, ConfigDef.Width.SHORT, "Key Missing Strategy")
+            .define(KEY_MISSING_STRATEGY, Type.STRING, "fail", new StrategyValidator("fail", "null"), Importance.MEDIUM, "Behavior when key columns are missing: fail|null", "Synchronization", 4, ConfigDef.Width.SHORT, "Key Missing Strategy")
             .define(TOPIC_TEMPLATE, Type.STRING, "${database}.${table}", Importance.MEDIUM, "Topic template using ${database} and ${table}", "Synchronization", 5, ConfigDef.Width.MEDIUM, "Topic Template")
-            .define(TOPIC_INVALID_STRATEGY, Type.STRING, "fail", new NonEmptyString(), Importance.MEDIUM, "Behavior when topic is invalid: fail|sanitize_spaces", "Synchronization", 6, ConfigDef.Width.SHORT, "Topic Invalid Strategy")
-            .define(UPDATE_TIME_COLUMN, Type.STRING, "update_time", new NonEmptyString(), Importance.MEDIUM, "Update time column for safety delay window", "Synchronization", 7, ConfigDef.Width.MEDIUM, "Update Time Column")
-            .define(SAFETY_DELAY_MS, Type.LONG, 0L, Range.atLeast(0), Importance.LOW, "Safety delay window in milliseconds", "Synchronization", 8, ConfigDef.Width.SHORT, "Safety Delay (ms)")
-            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 9, ConfigDef.Width.SHORT, "Batch Size")
-            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 10, ConfigDef.Width.SHORT, "Poll Interval")
+            .define(TOPIC_INVALID_STRATEGY, Type.STRING, "fail", new StrategyValidator("fail", "sanitize_spaces"), Importance.MEDIUM, "Behavior when topic is invalid: fail|sanitize_spaces", "Synchronization", 6, ConfigDef.Width.SHORT, "Topic Invalid Strategy")
+            .define(PARTITION_STRATEGY, Type.STRING, "mod", new StrategyValidator("mod"), Importance.MEDIUM, "Partition strategy: mod", "Synchronization", 7, ConfigDef.Width.SHORT, "Partition Strategy")
+            .define(UPDATE_TIME_COLUMN, Type.STRING, "update_time", new NonEmptyString(), Importance.MEDIUM, "Update time column for safety delay window", "Synchronization", 8, ConfigDef.Width.MEDIUM, "Update Time Column")
+            .define(SAFETY_DELAY_MS, Type.LONG, 0L, Range.atLeast(0), Importance.LOW, "Safety delay window in milliseconds", "Synchronization", 9, ConfigDef.Width.SHORT, "Safety Delay (ms)")
+            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 10, ConfigDef.Width.SHORT, "Batch Size")
+            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 11, ConfigDef.Width.SHORT, "Poll Interval")
+            .define(RETRY_MAX_ATTEMPTS, Type.INT, 3, Range.atLeast(0), Importance.LOW, "Max retry attempts for transient failures (0 disables)", "Synchronization", 12, ConfigDef.Width.SHORT, "Retry Max Attempts")
+            .define(RETRY_BACKOFF_MS, Type.LONG, 1000L, Range.atLeast(0), Importance.LOW, "Retry backoff in milliseconds", "Synchronization", 13, ConfigDef.Width.SHORT, "Retry Backoff (ms)")
             // Internal
             .define(TASK_ID, Type.INT, 0, Importance.LOW, "Internal Task ID")
             .define(TASK_COUNT, Type.INT, 1, Importance.LOW, "Internal Task Count");
@@ -74,8 +81,39 @@ public class DorisSourceConfig extends AbstractConfig {
     public String getKeyMissingStrategy() { return getString(KEY_MISSING_STRATEGY); }
     public String getTopicTemplate() { return getString(TOPIC_TEMPLATE); }
     public String getTopicInvalidStrategy() { return getString(TOPIC_INVALID_STRATEGY); }
+    public String getPartitionStrategy() { return getString(PARTITION_STRATEGY); }
     public String getUpdateTimeColumn() { return getString(UPDATE_TIME_COLUMN); }
     public long getSafetyDelayMs() { return getLong(SAFETY_DELAY_MS); }
+    public int getRetryMaxAttempts() { return getInt(RETRY_MAX_ATTEMPTS); }
+    public long getRetryBackoffMs() { return getLong(RETRY_BACKOFF_MS); }
+
+    private static class StrategyValidator implements ConfigDef.Validator {
+        private final java.util.Set<String> allowed;
+
+        private StrategyValidator(String... values) {
+            java.util.Set<String> set = new java.util.HashSet<>();
+            for (String value : values) {
+                set.add(value);
+            }
+            this.allowed = java.util.Collections.unmodifiableSet(set);
+        }
+
+        @Override
+        public void ensureValid(String name, Object value) {
+            if (value == null) {
+                throw new ConfigException(name, null, "Value must be one of " + allowed);
+            }
+            String normalized = value.toString().trim().toLowerCase();
+            if (!allowed.contains(normalized)) {
+                throw new ConfigException(name, value, "Value must be one of " + allowed);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return allowed.toString();
+        }
+    }
     public int getBatchSize() { return getInt(BATCH_SIZE); }
     public long getPollIntervalMs() { return getLong(POLL_INTERVAL_MS); }
     public int getTaskId() { return getInt(TASK_ID); }

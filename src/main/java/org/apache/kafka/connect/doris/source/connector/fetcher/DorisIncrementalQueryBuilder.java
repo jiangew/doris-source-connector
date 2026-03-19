@@ -7,12 +7,14 @@ public class DorisIncrementalQueryBuilder {
     private final TimeProvider timeProvider;
     private final IdentifierEscaper identifierEscaper;
     private final SafetyWindowPredicate safetyPredicate;
+    private final PartitionStrategy partitionStrategy;
 
     public DorisIncrementalQueryBuilder(DorisSourceConfig config, TimeProvider timeProvider) {
         this.config = config;
         this.timeProvider = timeProvider;
         this.identifierEscaper = new IdentifierEscaper();
         this.safetyPredicate = new SafetyDelayPredicate(config, timeProvider);
+        this.partitionStrategy = selectPartitionStrategy(config);
     }
 
     public DorisIncrementalQueryBuilder(DorisSourceConfig config) {
@@ -20,13 +22,7 @@ public class DorisIncrementalQueryBuilder {
     }
 
     public String build(long lastSeq) {
-        String partitionClause = "";
-        if (config.getTaskCount() > 1) {
-            partitionClause = String.format(" AND MOD(%s, %d) = %d",
-                    identifierEscaper.escape(config.getPartitionColumn()),
-                    config.getTaskCount(),
-                    config.getTaskId());
-        }
+        String partitionClause = partitionStrategy.buildClause(config, identifierEscaper);
 
         String safetyClause = safetyPredicate.build();
 
@@ -40,6 +36,14 @@ public class DorisIncrementalQueryBuilder {
                 identifierEscaper.escape(config.getSeqColumn()),
                 config.getBatchSize()
         );
+    }
+
+    private PartitionStrategy selectPartitionStrategy(DorisSourceConfig config) {
+        String strategy = config.getPartitionStrategy();
+        if ("mod".equalsIgnoreCase(strategy)) {
+            return new ModPartitionStrategy();
+        }
+        return new ModPartitionStrategy();
     }
 
 }

@@ -10,6 +10,7 @@ import java.util.Map;
 public class DorisSchemaManager {
     private Schema cachedSchema;
     private final JdbcTypeMapper jdbcTypeMapper;
+    private final SchemaCompatibilityStrategy compatibilityStrategy;
 
     public Schema schemaFor(Map<String, Object> data) {
         if (cachedSchema == null || !isCompatible(cachedSchema, data)) {
@@ -26,11 +27,12 @@ public class DorisSchemaManager {
     }
 
     public DorisSchemaManager() {
-        this(new JdbcTypeMapper());
+        this(new JdbcTypeMapper(), new SchemaCompatibilityStrategy());
     }
 
-    public DorisSchemaManager(JdbcTypeMapper jdbcTypeMapper) {
+    public DorisSchemaManager(JdbcTypeMapper jdbcTypeMapper, SchemaCompatibilityStrategy compatibilityStrategy) {
         this.jdbcTypeMapper = jdbcTypeMapper;
+        this.compatibilityStrategy = compatibilityStrategy;
     }
 
     private boolean isCompatible(Schema schema, Map<String, Object> data) {
@@ -42,7 +44,7 @@ public class DorisSchemaManager {
             Object value = entry.getValue();
             if (value != null) {
                 Schema inferred = inferSchema(value);
-                if (field.schema().type() != inferred.type()) {
+                if (!isCompatible(field.schema(), inferred)) {
                     return false;
                 }
             }
@@ -59,7 +61,7 @@ public class DorisSchemaManager {
             Integer sqlType = sqlTypes.get(entry.getKey());
             if (sqlType != null) {
                 Schema inferred = jdbcTypeMapper.schemaFor(sqlType, entry.getValue());
-                if (field.schema().type() != inferred.type()) {
+                if (!isCompatible(field.schema(), inferred)) {
                     return false;
                 }
             }
@@ -77,10 +79,11 @@ public class DorisSchemaManager {
         for (Map.Entry<String, Object> entry : data.entrySet()) {
             String name = entry.getKey();
             Object value = entry.getValue();
-            Schema schema = (value == null)
+            Schema incoming = (value == null)
                     ? fields.getOrDefault(name, SchemaBuilder.string().optional().build())
                     : inferSchema(value);
-            fields.put(name, schema);
+            Schema existing = fields.get(name);
+            fields.put(name, compatibilityStrategy.compatibleSchema(existing, incoming));
         }
 
         SchemaBuilder builder = SchemaBuilder.struct();
@@ -100,10 +103,11 @@ public class DorisSchemaManager {
         for (Map.Entry<String, Object> entry : data.entrySet()) {
             String name = entry.getKey();
             Integer sqlType = sqlTypes.get(name);
-            Schema schema = (sqlType != null)
+            Schema incoming = (sqlType != null)
                     ? jdbcTypeMapper.schemaFor(sqlType, entry.getValue())
                     : inferSchema(entry.getValue());
-            fields.put(name, schema);
+            Schema existing = fields.get(name);
+            fields.put(name, compatibilityStrategy.compatibleSchema(existing, incoming));
         }
 
         SchemaBuilder builder = SchemaBuilder.struct();
@@ -119,6 +123,12 @@ public class DorisSchemaManager {
         if (value instanceof Boolean) return SchemaBuilder.bool().optional().build();
         if (value instanceof Double || value instanceof Float) return SchemaBuilder.float64().optional().build();
         return SchemaBuilder.string().optional().build();
+    }
+
+    private boolean isCompatible(Schema existing, Schema incoming) {
+        Schema resolved = compatibilityStrategy.compatibleSchema(existing, incoming);
+        return resolved != null && resolved.type() == existing.type()
+                && (existing.name() == null || existing.name().equals(resolved.name()));
     }
 
     private Schema existingSchemaOrNull() {

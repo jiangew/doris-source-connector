@@ -1,6 +1,7 @@
 package org.apache.kafka.connect.doris.source.connector;
 
-import org.apache.kafka.connect.doris.source.connector.client.DorisClient;
+import org.apache.kafka.connect.doris.source.connector.client.DorisClientProvider;
+import org.apache.kafka.connect.doris.source.connector.client.DorisReader;
 import org.apache.kafka.connect.doris.source.connector.converter.DorisRecordConverter;
 import org.apache.kafka.connect.doris.source.connector.fetcher.DorisIncrementalFetcher;
 import org.apache.kafka.connect.doris.source.connector.sync.DefaultSyncEngine;
@@ -19,7 +20,7 @@ public class DorisSourceTask extends SourceTask {
     private static final Logger log = LoggerFactory.getLogger(DorisSourceTask.class);
 
     private DorisSourceConfig config;
-    private DorisClient dorisClient;
+    private DorisClientProvider dorisClientProvider;
     private Map<String, Object> partition;
     private SyncEngine syncEngine;
 
@@ -31,14 +32,15 @@ public class DorisSourceTask extends SourceTask {
     @Override
     public void start(Map<String, String> props) {
         this.config = new DorisSourceConfig(props);
-        this.dorisClient = new DorisClient(config);
         log.info("Starting task {}/{} for table {}", config.getTaskId(), config.getTaskCount(), config.getDorisTable());
+        DorisReader dorisReader;
         try {
-            this.dorisClient.connect();
+            this.dorisClientProvider = new DorisClientProvider(config);
+            dorisReader = this.dorisClientProvider.open();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to connect to Doris", e);
         }
-        DorisIncrementalFetcher fetcher = new DorisIncrementalFetcher(config, dorisClient);
+        DorisIncrementalFetcher fetcher = new DorisIncrementalFetcher(config, dorisReader);
         DorisRecordConverter converter = new DorisRecordConverter(config);
 
         // Include task info in partition to ensure each task has its own offset stream
@@ -56,7 +58,7 @@ public class DorisSourceTask extends SourceTask {
                 converter,
                 initialOffset,
                 partition,
-                dorisClient::close
+                dorisClientProvider::close
         );
     }
 
@@ -71,8 +73,8 @@ public class DorisSourceTask extends SourceTask {
             syncEngine.close();
             return;
         }
-        if (dorisClient != null) {
-            dorisClient.close();
+        if (dorisClientProvider != null) {
+            dorisClientProvider.close();
         }
     }
 }

@@ -15,7 +15,7 @@ public class DorisIncrementalQueryBuilderTest {
         DorisIncrementalQueryBuilder builder = new DorisIncrementalQueryBuilder(config(0, 1, "id"), () -> 0L);
         String sql = builder.build(100L);
         assertEquals(
-                "SELECT * FROM tbl WHERE seq > 100 ORDER BY seq LIMIT 1000",
+                "SELECT * FROM `tbl` WHERE `seq` > 100 ORDER BY `seq` LIMIT 1000",
                 sql
         );
     }
@@ -25,7 +25,7 @@ public class DorisIncrementalQueryBuilderTest {
         DorisIncrementalQueryBuilder builder = new DorisIncrementalQueryBuilder(config(2, 4, "user_id"), () -> 0L);
         String sql = builder.build(5L);
         assertEquals(
-                "SELECT * FROM tbl WHERE seq > 5 AND MOD(user_id, 4) = 2 ORDER BY seq LIMIT 1000",
+                "SELECT * FROM `tbl` WHERE `seq` > 5 AND MOD(`user_id`, 4) = 2 ORDER BY `seq` LIMIT 1000",
                 sql
         );
     }
@@ -50,7 +50,7 @@ public class DorisIncrementalQueryBuilderTest {
         String sql = builder.build(1L);
 
         assertEquals(
-                "SELECT * FROM tbl WHERE seq > 1 AND update_time < FROM_UNIXTIME(1699999995) ORDER BY seq LIMIT 1000",
+                "SELECT * FROM `tbl` WHERE `seq` > 1 AND `update_time` < FROM_UNIXTIME(1699999995) ORDER BY `seq` LIMIT 1000",
                 sql
         );
     }

@@ -5,10 +5,12 @@ import org.apache.kafka.connect.doris.source.connector.DorisSourceConfig;
 public class DorisIncrementalQueryBuilder {
     private final DorisSourceConfig config;
     private final TimeProvider timeProvider;
+    private final IdentifierEscaper identifierEscaper;
 
     public DorisIncrementalQueryBuilder(DorisSourceConfig config, TimeProvider timeProvider) {
         this.config = config;
         this.timeProvider = timeProvider;
+        this.identifierEscaper = new IdentifierEscaper();
     }
 
     public DorisIncrementalQueryBuilder(DorisSourceConfig config) {
@@ -19,7 +21,7 @@ public class DorisIncrementalQueryBuilder {
         String partitionClause = "";
         if (config.getTaskCount() > 1) {
             partitionClause = String.format(" AND MOD(%s, %d) = %d",
-                    config.getPartitionColumn(),
+                    identifierEscaper.escape(config.getPartitionColumn()),
                     config.getTaskCount(),
                     config.getTaskId());
         }
@@ -28,12 +30,12 @@ public class DorisIncrementalQueryBuilder {
 
         return String.format(
                 "SELECT * FROM %s WHERE %s > %d%s%s ORDER BY %s LIMIT %d",
-                config.getDorisTable(),
-                config.getSeqColumn(),
+                identifierEscaper.escape(config.getDorisTable()),
+                identifierEscaper.escape(config.getSeqColumn()),
                 lastSeq,
                 partitionClause,
                 safetyClause,
-                config.getSeqColumn(),
+                identifierEscaper.escape(config.getSeqColumn()),
                 config.getBatchSize()
         );
     }
@@ -44,6 +46,6 @@ public class DorisIncrementalQueryBuilder {
             return "";
         }
         long cutoffSeconds = Math.max(0L, (timeProvider.nowMillis() - delayMs) / 1000L);
-        return String.format(" AND %s < FROM_UNIXTIME(%d)", config.getUpdateTimeColumn(), cutoffSeconds);
+        return String.format(" AND %s < FROM_UNIXTIME(%d)", identifierEscaper.escape(config.getUpdateTimeColumn()), cutoffSeconds);
     }
 }

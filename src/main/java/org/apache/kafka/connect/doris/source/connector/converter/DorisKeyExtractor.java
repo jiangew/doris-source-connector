@@ -22,6 +22,9 @@ public class DorisKeyExtractor {
         }
         Map<String, Object> keyData = new LinkedHashMap<>();
         for (String column : keyColumns) {
+            if (!data.containsKey(column)) {
+                throw new IllegalArgumentException("Missing key column: " + column);
+            }
             keyData.put(column, data.get(column));
         }
         Schema keySchema = schemaManager.schemaFor(keyData);

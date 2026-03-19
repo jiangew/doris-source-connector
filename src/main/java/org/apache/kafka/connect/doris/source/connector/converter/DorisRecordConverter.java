@@ -18,7 +18,10 @@ public class DorisRecordConverter {
     public DorisRecordConverter(DorisSourceConfig config) {
         this.schemaManager = new DorisSchemaManager();
         this.topicResolver = new DorisTopicResolver(config);
-        this.keyExtractor = new DorisKeyExtractor(config.getKeyColumns());
+        this.keyExtractor = new DorisKeyExtractor(
+                config.getKeyColumns(),
+                KeyMissingStrategy.fromString(config.getKeyMissingStrategy())
+        );
     }
 
     public SourceRecord convert(DorisRow row, Map<String, Object> partition) {

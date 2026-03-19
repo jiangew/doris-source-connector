@@ -15,7 +15,7 @@ public class DorisKeyExtractorTest {
 
     @Test
     public void extractsKeyWhenColumnsPresent() {
-        DorisKeyExtractor extractor = new DorisKeyExtractor(Arrays.asList("id", "tenant"));
+        DorisKeyExtractor extractor = new DorisKeyExtractor(Arrays.asList("id", "tenant"), KeyMissingStrategy.FAIL);
         Map<String, Object> data = new HashMap<>();
         data.put("id", 1L);
         data.put("tenant", "t1");
@@ -30,10 +30,20 @@ public class DorisKeyExtractorTest {
 
     @Test
     public void throwsWhenKeyColumnMissing() {
-        DorisKeyExtractor extractor = new DorisKeyExtractor(Arrays.asList("id", "tenant"));
+        DorisKeyExtractor extractor = new DorisKeyExtractor(Arrays.asList("id", "tenant"), KeyMissingStrategy.FAIL);
         Map<String, Object> data = new HashMap<>();
         data.put("id", 1L);
 
         assertThrows(IllegalArgumentException.class, () -> extractor.extract(data));
+    }
+
+    @Test
+    public void returnsNullWhenStrategyAllowsMissingKeys() {
+        DorisKeyExtractor extractor = new DorisKeyExtractor(Arrays.asList("id", "tenant"), KeyMissingStrategy.NULL);
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", 1L);
+
+        DorisKeyExtractor.KeyData keyData = extractor.extract(data);
+        assertEquals(null, keyData);
     }
 }

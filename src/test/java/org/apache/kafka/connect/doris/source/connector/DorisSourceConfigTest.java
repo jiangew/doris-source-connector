@@ -27,7 +27,9 @@ public class DorisSourceConfigTest {
         assertEquals("seq", config.getSeqColumn());
         assertEquals("id", config.getPartitionColumn());
         assertEquals(0, config.getKeyColumns().size());
+        assertEquals("fail", config.getKeyMissingStrategy());
         assertEquals("${database}.${table}", config.getTopicTemplate());
+        assertEquals("fail", config.getTopicInvalidStrategy());
         assertEquals("update_time", config.getUpdateTimeColumn());
         assertEquals(0L, config.getSafetyDelayMs());
         assertEquals(1000, config.getBatchSize());

@@ -29,7 +29,17 @@ public class DorisTopicResolverTest {
         assertThrows(IllegalArgumentException.class, resolver::resolve);
     }
 
+    @Test
+    public void sanitizesSpacesWhenConfigured() {
+        DorisTopicResolver resolver = new DorisTopicResolver(configWithTemplate("topic ${database}.${table}", "sanitize_spaces"));
+        assertEquals("topic_db.tbl", resolver.resolve());
+    }
+
     private static DorisSourceConfig configWithTemplate(String template) {
+        return configWithTemplate(template, "fail");
+    }
+
+    private static DorisSourceConfig configWithTemplate(String template, String invalidStrategy) {
         Map<String, String> props = new HashMap<>();
         props.put(DorisSourceConfig.DORIS_HOST, "localhost");
         props.put(DorisSourceConfig.DORIS_USER, "root");
@@ -37,6 +47,7 @@ public class DorisTopicResolverTest {
         props.put(DorisSourceConfig.DORIS_DATABASE, "db");
         props.put(DorisSourceConfig.DORIS_TABLE, "tbl");
         props.put(DorisSourceConfig.TOPIC_TEMPLATE, template);
+        props.put(DorisSourceConfig.TOPIC_INVALID_STRATEGY, invalidStrategy);
         return new DorisSourceConfig(props);
     }
 }

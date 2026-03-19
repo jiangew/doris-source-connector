@@ -10,10 +10,12 @@ import java.util.Map;
 public class DorisKeyExtractor {
     private final List<String> keyColumns;
     private final DorisSchemaManager schemaManager;
+    private final KeyMissingStrategy missingStrategy;
 
-    public DorisKeyExtractor(List<String> keyColumns) {
+    public DorisKeyExtractor(List<String> keyColumns, KeyMissingStrategy missingStrategy) {
         this.keyColumns = keyColumns;
         this.schemaManager = new DorisSchemaManager();
+        this.missingStrategy = missingStrategy;
     }
 
     public KeyData extract(Map<String, Object> data) {
@@ -23,6 +25,9 @@ public class DorisKeyExtractor {
         Map<String, Object> keyData = new LinkedHashMap<>();
         for (String column : keyColumns) {
             if (!data.containsKey(column)) {
+                if (missingStrategy == KeyMissingStrategy.NULL) {
+                    return null;
+                }
                 throw new IllegalArgumentException("Missing key column: " + column);
             }
             keyData.put(column, data.get(column));

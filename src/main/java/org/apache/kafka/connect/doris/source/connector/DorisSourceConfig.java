@@ -20,7 +20,9 @@ public class DorisSourceConfig extends AbstractConfig {
     public static final String SEQ_COLUMN = "seq.column";
     public static final String PARTITION_COLUMN = "partition.column";
     public static final String KEY_COLUMNS = "key.columns";
+    public static final String KEY_MISSING_STRATEGY = "key.missing.strategy";
     public static final String TOPIC_TEMPLATE = "topic.template";
+    public static final String TOPIC_INVALID_STRATEGY = "topic.invalid.strategy";
     public static final String UPDATE_TIME_COLUMN = "update.time.column";
     public static final String SAFETY_DELAY_MS = "safety.delay.ms";
     public static final String BATCH_SIZE = "batch.size";
@@ -49,11 +51,13 @@ public class DorisSourceConfig extends AbstractConfig {
             .define(SEQ_COLUMN, Type.STRING, "seq", new NonEmptyString(), Importance.MEDIUM, "Sequence column for incremental fetch", "Synchronization", 1, ConfigDef.Width.MEDIUM, "Sequence Column")
             .define(PARTITION_COLUMN, Type.STRING, "id", new NonEmptyString(), Importance.MEDIUM, "Partition column for task sharding", "Synchronization", 2, ConfigDef.Width.MEDIUM, "Partition Column")
             .define(KEY_COLUMNS, Type.LIST, "", Importance.MEDIUM, "Key columns (comma-separated) for SourceRecord key", "Synchronization", 3, ConfigDef.Width.MEDIUM, "Key Columns")
-            .define(TOPIC_TEMPLATE, Type.STRING, "${database}.${table}", Importance.MEDIUM, "Topic template using ${database} and ${table}", "Synchronization", 4, ConfigDef.Width.MEDIUM, "Topic Template")
-            .define(UPDATE_TIME_COLUMN, Type.STRING, "update_time", new NonEmptyString(), Importance.MEDIUM, "Update time column for safety delay window", "Synchronization", 5, ConfigDef.Width.MEDIUM, "Update Time Column")
-            .define(SAFETY_DELAY_MS, Type.LONG, 0L, Range.atLeast(0), Importance.LOW, "Safety delay window in milliseconds", "Synchronization", 6, ConfigDef.Width.SHORT, "Safety Delay (ms)")
-            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 7, ConfigDef.Width.SHORT, "Batch Size")
-            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 8, ConfigDef.Width.SHORT, "Poll Interval")
+            .define(KEY_MISSING_STRATEGY, Type.STRING, "fail", new NonEmptyString(), Importance.MEDIUM, "Behavior when key columns are missing: fail|null", "Synchronization", 4, ConfigDef.Width.SHORT, "Key Missing Strategy")
+            .define(TOPIC_TEMPLATE, Type.STRING, "${database}.${table}", Importance.MEDIUM, "Topic template using ${database} and ${table}", "Synchronization", 5, ConfigDef.Width.MEDIUM, "Topic Template")
+            .define(TOPIC_INVALID_STRATEGY, Type.STRING, "fail", new NonEmptyString(), Importance.MEDIUM, "Behavior when topic is invalid: fail|sanitize_spaces", "Synchronization", 6, ConfigDef.Width.SHORT, "Topic Invalid Strategy")
+            .define(UPDATE_TIME_COLUMN, Type.STRING, "update_time", new NonEmptyString(), Importance.MEDIUM, "Update time column for safety delay window", "Synchronization", 7, ConfigDef.Width.MEDIUM, "Update Time Column")
+            .define(SAFETY_DELAY_MS, Type.LONG, 0L, Range.atLeast(0), Importance.LOW, "Safety delay window in milliseconds", "Synchronization", 8, ConfigDef.Width.SHORT, "Safety Delay (ms)")
+            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 9, ConfigDef.Width.SHORT, "Batch Size")
+            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 10, ConfigDef.Width.SHORT, "Poll Interval")
             // Internal
             .define(TASK_ID, Type.INT, 0, Importance.LOW, "Internal Task ID")
             .define(TASK_COUNT, Type.INT, 1, Importance.LOW, "Internal Task Count");
@@ -67,7 +71,9 @@ public class DorisSourceConfig extends AbstractConfig {
     public String getSeqColumn() { return getString(SEQ_COLUMN); }
     public String getPartitionColumn() { return getString(PARTITION_COLUMN); }
     public java.util.List<String> getKeyColumns() { return getList(KEY_COLUMNS); }
+    public String getKeyMissingStrategy() { return getString(KEY_MISSING_STRATEGY); }
     public String getTopicTemplate() { return getString(TOPIC_TEMPLATE); }
+    public String getTopicInvalidStrategy() { return getString(TOPIC_INVALID_STRATEGY); }
     public String getUpdateTimeColumn() { return getString(UPDATE_TIME_COLUMN); }
     public long getSafetyDelayMs() { return getLong(SAFETY_DELAY_MS); }
     public int getBatchSize() { return getInt(BATCH_SIZE); }

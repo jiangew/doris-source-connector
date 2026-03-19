@@ -17,9 +17,11 @@ public class DorisClient implements DorisReader {
 
     private final DorisSourceConfig config;
     private Connection connection;
+    private final DorisRowMapper rowMapper;
 
     public DorisClient(DorisSourceConfig config) {
         this.config = config;
+        this.rowMapper = new DorisRowMapper();
     }
 
     public void connect() throws SQLException {
@@ -69,24 +71,8 @@ public class DorisClient implements DorisReader {
         List<DorisRowWithTypes> rows = new ArrayList<>();
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            ResultSetMetaData metaData = rs.getMetaData();
-            int columnCount = metaData.getColumnCount();
-
             while (rs.next()) {
-                Map<String, Object> data = new HashMap<>();
-                Map<String, Integer> sqlTypes = new HashMap<>();
-                long seq = -1;
-                for (int i = 1; i <= columnCount; i++) {
-                    String columnName = metaData.getColumnLabel(i);
-                    Object value = rs.getObject(i);
-                    data.put(columnName, value);
-                    sqlTypes.put(columnName, metaData.getColumnType(i));
-                }
-                Object seqValue = data.get(seqColumn);
-                if (seqValue instanceof Number) {
-                    seq = ((Number) seqValue).longValue();
-                }
-                rows.add(new DorisRowWithTypes(seq, data, sqlTypes));
+                rows.add(rowMapper.map(rs, seqColumn));
             }
         }
         return rows;

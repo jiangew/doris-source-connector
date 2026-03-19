@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DorisClient {
+public class DorisClient implements DorisReader {
     private static final Logger log = LoggerFactory.getLogger(DorisClient.class);
 
     private final DorisSourceConfig config;
@@ -38,6 +38,7 @@ public class DorisClient {
         }
     }
 
+    @Override
     public List<DorisRow> fetchRecords(String sql, String seqColumn) throws SQLException {
         List<DorisRow> rows = new ArrayList<>();
         try (Statement stmt = connection.createStatement();

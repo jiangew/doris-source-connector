@@ -1,7 +1,7 @@
 package org.apache.kafka.connect.doris.source.connector.fetcher;
 
 import org.apache.kafka.connect.doris.source.connector.DorisSourceConfig;
-import org.apache.kafka.connect.doris.source.connector.client.DorisClient;
+import org.apache.kafka.connect.doris.source.connector.client.DorisReader;
 import org.apache.kafka.connect.doris.source.connector.model.DorisRow;
 
 import java.sql.SQLException;
@@ -9,9 +9,9 @@ import java.util.List;
 
 public class DorisIncrementalFetcher {
     private final DorisSourceConfig config;
-    private final DorisClient dorisClient;
+    private final DorisReader dorisClient;
 
-    public DorisIncrementalFetcher(DorisSourceConfig config, DorisClient dorisClient) {
+    public DorisIncrementalFetcher(DorisSourceConfig config, DorisReader dorisClient) {
         this.config = config;
         this.dorisClient = dorisClient;
     }

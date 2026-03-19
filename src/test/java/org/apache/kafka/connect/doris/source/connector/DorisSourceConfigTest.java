@@ -25,6 +25,7 @@ public class DorisSourceConfigTest {
         assertEquals("db", config.getDorisDatabase());
         assertEquals("tbl", config.getDorisTable());
         assertEquals("seq", config.getSeqColumn());
+        assertEquals("id", config.getPartitionColumn());
         assertEquals(1000, config.getBatchSize());
     }
 }

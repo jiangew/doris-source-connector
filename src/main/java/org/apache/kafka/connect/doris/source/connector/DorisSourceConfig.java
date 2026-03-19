@@ -18,6 +18,7 @@ public class DorisSourceConfig extends AbstractConfig {
     public static final String DORIS_DATABASE = "doris.database";
     public static final String DORIS_TABLE = "doris.table";
     public static final String SEQ_COLUMN = "seq.column";
+    public static final String PARTITION_COLUMN = "partition.column";
     public static final String BATCH_SIZE = "batch.size";
     public static final String POLL_INTERVAL_MS = "poll.interval.ms";
 
@@ -42,8 +43,9 @@ public class DorisSourceConfig extends AbstractConfig {
             .define(DORIS_TABLE, Type.STRING, ConfigDef.NO_DEFAULT_VALUE, new NonEmptyString(), Importance.HIGH, "Doris table", "Connection", 6, ConfigDef.Width.MEDIUM, "Doris Table")
             // Synchronization
             .define(SEQ_COLUMN, Type.STRING, "seq", new NonEmptyString(), Importance.MEDIUM, "Sequence column for incremental fetch", "Synchronization", 1, ConfigDef.Width.MEDIUM, "Sequence Column")
-            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 2, ConfigDef.Width.SHORT, "Batch Size")
-            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 3, ConfigDef.Width.SHORT, "Poll Interval")
+            .define(PARTITION_COLUMN, Type.STRING, "id", new NonEmptyString(), Importance.MEDIUM, "Partition column for task sharding", "Synchronization", 2, ConfigDef.Width.MEDIUM, "Partition Column")
+            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 3, ConfigDef.Width.SHORT, "Batch Size")
+            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 4, ConfigDef.Width.SHORT, "Poll Interval")
             // Internal
             .define(TASK_ID, Type.INT, 0, Importance.LOW, "Internal Task ID")
             .define(TASK_COUNT, Type.INT, 1, Importance.LOW, "Internal Task Count");
@@ -55,6 +57,7 @@ public class DorisSourceConfig extends AbstractConfig {
     public String getDorisDatabase() { return getString(DORIS_DATABASE); }
     public String getDorisTable() { return getString(DORIS_TABLE); }
     public String getSeqColumn() { return getString(SEQ_COLUMN); }
+    public String getPartitionColumn() { return getString(PARTITION_COLUMN); }
     public int getBatchSize() { return getInt(BATCH_SIZE); }
     public long getPollIntervalMs() { return getLong(POLL_INTERVAL_MS); }
     public int getTaskId() { return getInt(TASK_ID); }

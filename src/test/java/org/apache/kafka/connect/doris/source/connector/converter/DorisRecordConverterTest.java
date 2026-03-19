@@ -25,6 +25,8 @@ public class DorisRecordConverterTest {
         props.put(DorisSourceConfig.DORIS_PASSWORD, "password");
         props.put(DorisSourceConfig.DORIS_DATABASE, "db");
         props.put(DorisSourceConfig.DORIS_TABLE, "tbl");
+        props.put(DorisSourceConfig.KEY_COLUMNS, "id");
+        props.put(DorisSourceConfig.TOPIC_TEMPLATE, "doris_${database}_${table}");
         DorisSourceConfig config = new DorisSourceConfig(props);
 
         DorisRecordConverter converter = new DorisRecordConverter(config);
@@ -40,9 +42,10 @@ public class DorisRecordConverterTest {
         SourceRecord record = converter.convert(row, partition);
 
         assertNotNull(record);
-        assertEquals("db.tbl", record.topic());
+        assertEquals("doris_db_tbl", record.topic());
         assertEquals(100L, record.sourceOffset().get("last_seq"));
         assertNotNull(record.value());
+        assertNotNull(record.key());
     }
 
     @Test

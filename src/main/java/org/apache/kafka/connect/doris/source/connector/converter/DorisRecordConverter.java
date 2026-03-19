@@ -12,14 +12,17 @@ import java.util.Map;
 public class DorisRecordConverter {
     private final DorisSchemaManager schemaManager;
     private final DorisTopicResolver topicResolver;
+    private final DorisKeyExtractor keyExtractor;
 
     public DorisRecordConverter(DorisSourceConfig config) {
         this.schemaManager = new DorisSchemaManager();
         this.topicResolver = new DorisTopicResolver(config);
+        this.keyExtractor = new DorisKeyExtractor(config.getKeyColumns());
     }
 
     public SourceRecord convert(DorisRow row, Map<String, Object> partition) {
         Schema schema = schemaManager.schemaFor(row.getData());
+        DorisKeyExtractor.KeyData keyData = keyExtractor.extract(row.getData());
 
         Struct value = new Struct(schema);
         for (Map.Entry<String, Object> entry : row.getData().entrySet()) {
@@ -37,8 +40,8 @@ public class DorisRecordConverter {
                 offset.toMap(),
                 topic,
                 null, // partition
-                null, // key schema
-                null, // key
+                keyData != null ? keyData.getSchema() : null,
+                keyData != null ? keyData.getValue() : null,
                 schema,
                 value
         );

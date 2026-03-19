@@ -19,6 +19,8 @@ public class DorisSourceConfig extends AbstractConfig {
     public static final String DORIS_TABLE = "doris.table";
     public static final String SEQ_COLUMN = "seq.column";
     public static final String PARTITION_COLUMN = "partition.column";
+    public static final String KEY_COLUMNS = "key.columns";
+    public static final String TOPIC_TEMPLATE = "topic.template";
     public static final String BATCH_SIZE = "batch.size";
     public static final String POLL_INTERVAL_MS = "poll.interval.ms";
 
@@ -44,8 +46,10 @@ public class DorisSourceConfig extends AbstractConfig {
             // Synchronization
             .define(SEQ_COLUMN, Type.STRING, "seq", new NonEmptyString(), Importance.MEDIUM, "Sequence column for incremental fetch", "Synchronization", 1, ConfigDef.Width.MEDIUM, "Sequence Column")
             .define(PARTITION_COLUMN, Type.STRING, "id", new NonEmptyString(), Importance.MEDIUM, "Partition column for task sharding", "Synchronization", 2, ConfigDef.Width.MEDIUM, "Partition Column")
-            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 3, ConfigDef.Width.SHORT, "Batch Size")
-            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 4, ConfigDef.Width.SHORT, "Poll Interval")
+            .define(KEY_COLUMNS, Type.LIST, "", Importance.MEDIUM, "Key columns (comma-separated) for SourceRecord key", "Synchronization", 3, ConfigDef.Width.MEDIUM, "Key Columns")
+            .define(TOPIC_TEMPLATE, Type.STRING, "${database}.${table}", Importance.MEDIUM, "Topic template using ${database} and ${table}", "Synchronization", 4, ConfigDef.Width.MEDIUM, "Topic Template")
+            .define(BATCH_SIZE, Type.INT, 1000, Range.between(1, 100000), Importance.MEDIUM, "Fetch batch size", "Synchronization", 5, ConfigDef.Width.SHORT, "Batch Size")
+            .define(POLL_INTERVAL_MS, Type.LONG, 5000L, Range.atLeast(100), Importance.LOW, "Poll interval in milliseconds", "Synchronization", 6, ConfigDef.Width.SHORT, "Poll Interval")
             // Internal
             .define(TASK_ID, Type.INT, 0, Importance.LOW, "Internal Task ID")
             .define(TASK_COUNT, Type.INT, 1, Importance.LOW, "Internal Task Count");
@@ -58,6 +62,8 @@ public class DorisSourceConfig extends AbstractConfig {
     public String getDorisTable() { return getString(DORIS_TABLE); }
     public String getSeqColumn() { return getString(SEQ_COLUMN); }
     public String getPartitionColumn() { return getString(PARTITION_COLUMN); }
+    public java.util.List<String> getKeyColumns() { return getList(KEY_COLUMNS); }
+    public String getTopicTemplate() { return getString(TOPIC_TEMPLATE); }
     public int getBatchSize() { return getInt(BATCH_SIZE); }
     public long getPollIntervalMs() { return getLong(POLL_INTERVAL_MS); }
     public int getTaskId() { return getInt(TASK_ID); }

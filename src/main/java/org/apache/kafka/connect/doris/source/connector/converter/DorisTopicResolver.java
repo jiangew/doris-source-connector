@@ -10,6 +10,9 @@ public class DorisTopicResolver {
     }
 
     public String resolve() {
-        return config.getDorisDatabase() + "." + config.getDorisTable();
+        String template = config.getTopicTemplate();
+        return template
+                .replace("${database}", config.getDorisDatabase())
+                .replace("${table}", config.getDorisTable());
     }
 }

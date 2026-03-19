@@ -4,9 +4,15 @@ import org.apache.kafka.connect.doris.source.connector.DorisSourceConfig;
 
 public class DorisIncrementalQueryBuilder {
     private final DorisSourceConfig config;
+    private final TimeProvider timeProvider;
+
+    public DorisIncrementalQueryBuilder(DorisSourceConfig config, TimeProvider timeProvider) {
+        this.config = config;
+        this.timeProvider = timeProvider;
+    }
 
     public DorisIncrementalQueryBuilder(DorisSourceConfig config) {
-        this.config = config;
+        this(config, new SystemTimeProvider());
     }
 
     public String build(long lastSeq) {
@@ -18,14 +24,26 @@ public class DorisIncrementalQueryBuilder {
                     config.getTaskId());
         }
 
+        String safetyClause = buildSafetyClause();
+
         return String.format(
-                "SELECT * FROM %s WHERE %s > %d%s ORDER BY %s LIMIT %d",
+                "SELECT * FROM %s WHERE %s > %d%s%s ORDER BY %s LIMIT %d",
                 config.getDorisTable(),
                 config.getSeqColumn(),
                 lastSeq,
                 partitionClause,
+                safetyClause,
                 config.getSeqColumn(),
                 config.getBatchSize()
         );
+    }
+
+    private String buildSafetyClause() {
+        long delayMs = config.getSafetyDelayMs();
+        if (delayMs <= 0) {
+            return "";
+        }
+        long cutoffSeconds = Math.max(0L, (timeProvider.nowMillis() - delayMs) / 1000L);
+        return String.format(" AND %s < FROM_UNIXTIME(%d)", config.getUpdateTimeColumn(), cutoffSeconds);
     }
 }

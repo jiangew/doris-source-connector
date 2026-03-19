@@ -28,6 +28,8 @@ public class DorisSourceConfigTest {
         assertEquals("id", config.getPartitionColumn());
         assertEquals(0, config.getKeyColumns().size());
         assertEquals("${database}.${table}", config.getTopicTemplate());
+        assertEquals("update_time", config.getUpdateTimeColumn());
+        assertEquals(0L, config.getSafetyDelayMs());
         assertEquals(1000, config.getBatchSize());
     }
 }

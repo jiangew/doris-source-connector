@@ -60,7 +60,13 @@ mvn clean package
 | `doris.database` | - | HIGH | 数据库名 |
 | `doris.table` | - | HIGH | 表名 |
 | `seq.column` | `seq` | MEDIUM | 增量同步所依据的序列号列名（需单调递增） |
+| `update.time.column` | `update_time` | MEDIUM | 安全延迟窗口字段（用于过滤未稳定行） |
+| `safety.delay.ms` | `0` | LOW | 安全延迟窗口毫秒数（0 表示不启用） |
+| `partition.column` | `id` | MEDIUM | 任务分片列（hash 分片） |
+| `key.columns` | 空 | MEDIUM | Kafka Key 列（逗号分隔） |
+| `topic.template` | `${database}.${table}` | MEDIUM | Topic 模板（支持占位符 `${database}`、`${table}`） |
 | `batch.size` | 1000 | MEDIUM | 每次查询的最大行数 |
+| `poll.interval.ms` | 5000 | LOW | 空结果时的休眠间隔 |
 
 ## 5. Doris 表设计前提（强制）
 
